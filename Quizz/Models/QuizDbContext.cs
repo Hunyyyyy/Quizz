@@ -4,7 +4,7 @@ namespace Quizz.Models
 {
     public class QuizDbContext : DbContext
     {
-        public DbSet<User> Users { get; set; }
+        public DbSet<User> User { get; set; }
         public DbSet<Question> Question { get; set; }
         public DbSet<Answer> Answer { get; set; }
         public DbSet<Quiz> Quiz { get; set; }

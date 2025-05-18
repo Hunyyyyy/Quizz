@@ -1,10 +1,10 @@
 ﻿namespace Quizz.Models
 {
-    public class ResponseModel<T> where T : class
+    public class ResponseModel<T>
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
-        public T Data { get; set; } = null!;
+        public T Data { get; set; }
         public int code { get; set; } = 200;
         public ResponseModel(bool success, string message, T data, int code)
         {

@@ -46,44 +46,87 @@ namespace Quizz.Controllers
         [HttpPost("submit")]
         public async Task<IActionResult> SubmitAnswer([FromBody] SubmitAnswerRequestDto request)
         {
-            var answer = await _context.Answer
+            try
+            {
+                var answer = await _context.Answer
                 .FirstOrDefaultAsync(a => a.answer_id == request.AnswerId && a.question_id == request.QuestionId);
 
-            if (answer == null)
-                return NotFound("Câu hỏi hoặc đáp án không tồn tại.");
+                if (answer == null)
+                    return NotFound("Câu hỏi hoặc đáp án không tồn tại.");
 
-            var isCorrect = answer.is_correct;
+                var isCorrect = answer.is_correct;
 
-            var userAnswer = new UserAnswer
+                var userAnswer = new UserAnswer
+                {
+                    quiz_id = request.QuizId,
+                    question_id = request.QuestionId,
+                    answer_id = request.AnswerId,
+                    is_correct = isCorrect
+                };
+                _context.User_Answer.Add(userAnswer);
+                var quiz = await _context.Quiz.FindAsync(request.QuizId);
+                if (quiz != null && isCorrect)
+                {
+                    quiz.correct_answers += 1;
+                }
+
+                await _context.SaveChangesAsync();
+                var userAnswerDto = new UserAnswerSubmitDto
+                {
+                    UserAnswerId = userAnswer.user_answer_id,
+                    QuizId = userAnswer.quiz_id,
+                    QuestionId = userAnswer.question_id,
+                    AnswerId = userAnswer.answer_id,
+                    IsCorrect = userAnswer.is_correct
+                };
+                var response = new ResponseModel<UserAnswerSubmitDto>(
+                    success: true,
+                    message: "Đáp án đã được lưu thành công.",
+                    data: userAnswerDto,
+                    code: 200
+                );
+                return Ok(response);
+            }
+            catch (Exception ex)
             {
-                quiz_id = request.QuizId,
-                question_id = request.QuestionId,
-                answer_id = request.AnswerId,
-                is_correct = isCorrect
-            };
-            _context.User_Answer.Add(userAnswer);
-            var quiz = await _context.Quiz.FindAsync(request.QuizId);
-            if (quiz != null && isCorrect)
+                return BadRequest(new ResponseModel<string>(false, "Có lỗi xảy ra khi lưu đáp án.", ex.Message, 500));
+
+            }
+        }
+        [HttpPost("start")]
+        public async Task<IActionResult> StartQuiz([FromBody] StartQuizRequestDto request)
+        {
+            try
             {
-                quiz.correct_answers += 1;
+                var user = await _context.User.FindAsync(request.UserId);
+                if (user == null)
+                    return NotFound(new ResponseModel<string>(false, "Người dùng không tồn tại.", "", 404));
+
+                var quiz = new Quiz
+                {
+                    user_id = request.UserId,
+                    start_time = DateTime.UtcNow,
+                    correct_answers = 0,
+                    result = "InProgress"
+                };
+
+                _context.Quiz.Add(quiz);
+                await _context.SaveChangesAsync();
+
+                var response = new ResponseModel<int>(
+                    success: true,
+                    message: "Bắt đầu bài kiểm tra thành công.",
+                    data: quiz.quiz_id,
+                    code: 200
+                );
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseModel<string>(false, "Có lỗi xảy ra khi bắt đầu bài kiểm tra.", ex.Message, 500));
+
             }
 
-            await _context.SaveChangesAsync();
-            var userAnswerDto = new UserAnswerSubmitDto
-            {
-                UserAnswerId = userAnswer.user_answer_id,
-                QuizId = userAnswer.quiz_id,
-                QuestionId = userAnswer.question_id,
-                AnswerId = userAnswer.answer_id,
-                IsCorrect = userAnswer.is_correct
-            };
-            var response = new ResponseModel<UserAnswerSubmitDto>(
-                success: true,
-                message: "Đáp án đã được lưu thành công.",
-                data: userAnswerDto,
-                code: 200
-            );
-            return Ok(response);
         }
 
         [HttpGet("result/{quizId}")]
